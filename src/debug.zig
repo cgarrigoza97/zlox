@@ -25,6 +25,21 @@ pub fn disassembleInstruction(chunk: *Common.Chunk, offset: usize) usize {
         @intFromEnum(Common.OpCode.op_constant) => {
             return constantInstruction("OP_CONSTANT", chunk, offset);
         },
+        @intFromEnum(Common.OpCode.op_add) => {
+            return simpleInstruction("OP_ADD", offset);
+        },
+        @intFromEnum(Common.OpCode.op_subtract) => {
+            return simpleInstruction("OP_SUBTRACT", offset);
+        },
+        @intFromEnum(Common.OpCode.op_multiply) => {
+            return simpleInstruction("OP_MULTIPLY", offset);
+        },
+        @intFromEnum(Common.OpCode.op_divide) => {
+            return simpleInstruction("OP_DIVIDE", offset);
+        },
+        @intFromEnum(Common.OpCode.op_negate) => {
+            return simpleInstruction("OP_NEGATE", offset);
+        },
         @intFromEnum(Common.OpCode.op_return) => {
             return simpleInstruction("OP_RETURN", offset);
         },

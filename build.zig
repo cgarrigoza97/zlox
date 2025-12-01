@@ -83,6 +83,11 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
+    const debug_trace = b.option(bool, "debug-trace", "Enable debug trace execution") orelse false;
+    const options = b.addOptions();
+    options.addOption(bool, "debug_trace_execution", debug_trace);
+    exe.root_module.addOptions("config", options);
+
     // This declares intent for the executable to be installed into the
     // install prefix when running `zig build` (i.e. when executing the default
     // step). By default the install prefix is `zig-out/` but can be overridden
