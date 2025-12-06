@@ -3,6 +3,7 @@ const config = @import("config");
 
 const Common = @import("common.zig");
 const Value = @import("value.zig");
+const Compiler = @import("compiler.zig");
 const Debug = @import("debug.zig");
 
 const stack_max = 256;
@@ -123,9 +124,7 @@ fn run() InterpretResult {
     return InterpretResult.interpret_ok;
 }
 
-pub fn interpret(chunk: *Common.Chunk) InterpretResult {
-    vm.chunk = chunk;
-    vm.ip = vm.chunk.code;
-
-    return run();
+pub fn interpret(source: []u8) InterpretResult {
+    Compiler.compile(source);
+    return InterpretResult.interpret_ok;
 }

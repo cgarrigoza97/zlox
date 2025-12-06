@@ -7,14 +7,17 @@ const VM = @import("vm.zig");
 
 pub fn main() !void {
     VM.init();
-    const args = std.os.argv;
+    const allocator = std.heap.c_allocator;
+    var argv = try std.process.argsWithAllocator(allocator);
+    defer argv.deinit();
 
-    if (args.len == 1) {
-        try repl();
-    } else if (args.len == 2) {
-        // runFile(args[1]);
+    _ = argv.skip();
+
+    if (argv.next()) |s| {
+        const path = std.mem.sliceTo(s, 0);
+        try runFile(allocator, path);
     } else {
-        @panic("Usage: zlox [path]");
+        try repl();
     }
 
     VM.free();
@@ -36,36 +39,44 @@ fn repl() !void {
         const lineRead = line[0..lineLength];
 
         std.debug.print("{s}", .{lineRead});
-        // VM.interpret(lineRead);
+        _ = VM.interpret(lineRead);
     }
 }
 
-// fn runFile(path: [*:0]u8) void {
-//     const source = readFile(path);
-//     std.debug.print("{s}", .{source});
-//     // const result = VM.interpret(source);
-//     // std.debug.print("{s}", .{result});
-// }
+fn runFile(allocator: std.mem.Allocator, path: [:0]const u8) !void {
+    const source = try readFile(allocator, path);
+    const result = VM.interpret(source);
 
-// fn readFile(path: [*:0]u8) !*const []u8 {
-//     var alloc = std.heap.c_allocator;
-//     defer _ = alloc.deinit();
+    if (result == VM.InterpretResult.interpret_compile_error) {
+        std.process.exit(65);
+    }
 
-//     var file = try std.fs.cwd().openFile(path, .{ .mode = .read_only });
-//     defer file.close();
+    if (result == VM.InterpretResult.interpret_runtime_error) {
+        std.process.exit(70);
+    }
+}
 
-//     var read_buf: [2]u8 = undefined;
-//     var file_reader: std.fs.File.Reader = file.reader(&read_buf);
+fn readFile(allocator: std.mem.Allocator, path: [:0]const u8) ![]u8 {
+    var file = std.fs.cwd().openFile(path, .{ .mode = .read_only }) catch {
+        std.debug.print("Could not open file {s}.\n", .{path});
+        std.process.exit(74);
+    };
+    defer file.close();
 
-//     const reader = &file_reader.interface;
+    const fileStat = try file.stat();
 
-//     var line = std.Io.Writer.Allocating.init(alloc);
-//     defer line.deinit();
+    var read_buf: [2]u8 = undefined;
+    var file_reader: std.fs.File.Reader = file.reader(&read_buf);
 
-//     while (true) {
-//         _ = try reader.streamDelimiter(&line.writer, '\n');
-//         line.written();
-//     }
+    const buffer: []u8 = allocator.alloc(u8, fileStat.size) catch {
+        std.debug.print("Not enough memory to read {s}.\n", .{path});
+        std.process.exit(74);
+    };
+    const reader = &file_reader.interface;
+    reader.readSliceAll(buffer) catch {
+        std.debug.print("Could not read file {s}.\n", .{path});
+        std.process.exit(74);
+    };
 
-//     return line;
-// }
+    return buffer;
+}
