@@ -44,13 +44,13 @@ pub const TokenType = enum(u8) {
     var_kw,
     while_kw,
 
-    error_keyword,
+    error_kw,
     eof,
 };
 
 pub const Token = struct {
     tokenType: TokenType,
-    start: usize,
+    start: *u8,
     length: usize,
     line: usize,
     message: ?[*:0]const u8,
@@ -63,7 +63,7 @@ pub const Scanner = struct {
     line: usize,
 };
 
-var scanner = Scanner{
+pub var scanner = Scanner{
     .source = undefined,
     .start = 0,
     .current = 0,
@@ -112,7 +112,7 @@ pub fn scanToken() Token {
 }
 
 fn isAtEnd() bool {
-    return scanner.source[scanner.current] == 0;
+    return scanner.source.len - 1 == scanner.current;
 }
 
 fn isAlpha(c: u8) bool {
@@ -162,15 +162,17 @@ fn identifierType() TokenType {
 }
 
 fn makeToken(tokenType: TokenType) Token {
-    return Token{ .tokenType = tokenType, .length = scanner.current - scanner.start, .line = scanner.line, .start = scanner.start, .message = null };
+    std.debug.print("Making token \n", .{});
+    std.debug.print("{c}\n", .{scanner.source[scanner.current]});
+    return Token{ .tokenType = tokenType, .length = scanner.current - scanner.start, .line = scanner.line, .start = &scanner.source[scanner.start], .message = null };
 }
 
 fn errorToken(message: [*:0]const u8) Token {
     return Token{
         .length = std.mem.len(message),
         .line = scanner.line,
-        .start = scanner.start,
-        .tokenType = TokenType.error_keyword,
+        .start = &scanner.source[scanner.start],
+        .tokenType = TokenType.error_kw,
         .message = message,
     };
 }

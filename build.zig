@@ -84,8 +84,10 @@ pub fn build(b: *std.Build) void {
     });
 
     const debug_trace = b.option(bool, "debug-trace", "Enable debug trace execution") orelse false;
+    const debug_print = b.option(bool, "debug-print", "Enable debug print code") orelse false;
     const options = b.addOptions();
     options.addOption(bool, "debug_trace_execution", debug_trace);
+    options.addOption(bool, "debug_print_code", debug_print);
     exe.root_module.addOptions("config", options);
 
     // This declares intent for the executable to be installed into the

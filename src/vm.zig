@@ -125,6 +125,19 @@ fn run() InterpretResult {
 }
 
 pub fn interpret(source: []u8) InterpretResult {
-    Compiler.compile(source);
-    return InterpretResult.interpret_ok;
+    var chunk = Common.Chunk.init();
+
+    if (!Compiler.compile(source, &chunk)) {
+        chunk.free();
+
+        return .interpret_compile_error;
+    }
+
+    vm.chunk = &chunk;
+    vm.ip = vm.chunk.code;
+
+    const result = run();
+
+    chunk.free();
+    return result;
 }
