@@ -73,6 +73,8 @@ pub var scanner = Scanner{
 pub fn initScanner(source: []u8) void {
     scanner.source = source;
     scanner.line = 1;
+    scanner.start = 0;
+    scanner.current = 0;
 }
 
 pub fn scanToken() Token {
@@ -112,7 +114,7 @@ pub fn scanToken() Token {
 }
 
 fn isAtEnd() bool {
-    return scanner.source.len - 1 == scanner.current;
+    return scanner.source[scanner.current] == 0;
 }
 
 fn isAlpha(c: u8) bool {
@@ -162,8 +164,6 @@ fn identifierType() TokenType {
 }
 
 fn makeToken(tokenType: TokenType) Token {
-    std.debug.print("Making token \n", .{});
-    std.debug.print("{c}\n", .{scanner.source[scanner.current]});
     return Token{ .tokenType = tokenType, .length = scanner.current - scanner.start, .line = scanner.line, .start = &scanner.source[scanner.start], .message = null };
 }
 

@@ -24,21 +24,21 @@ pub fn main() !void {
 }
 
 fn repl() !void {
-    var stdin_buffer: [1024]u8 = undefined;
-    var stdin_reader = std.fs.File.stdin().reader(&stdin_buffer);
-    const stdin = &stdin_reader.interface;
-
-    var line: [1024]u8 = undefined;
-    var w: std.io.Writer = .fixed(&line);
-
     while (true) {
+        var stdin_buffer: [1024]u8 = undefined;
+        var stdin_reader = std.fs.File.stdin().reader(&stdin_buffer);
+        const stdin = &stdin_reader.interface;
         std.debug.print("> ", .{});
+
+        var line: [1024]u8 = undefined;
+        var w: std.Io.Writer = .fixed(&line);
 
         const lineLength = try stdin.streamDelimiter(&w, '\n');
 
+        // Add the null terminator.
+        line[lineLength - 1] = 0;
         const lineRead = line[0..lineLength];
 
-        std.debug.print("{s}", .{lineRead});
         _ = VM.interpret(lineRead);
     }
 }
