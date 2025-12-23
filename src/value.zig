@@ -2,7 +2,52 @@ const std = @import("std");
 
 const Memory = @import("memory.zig");
 
-pub const Value = f64;
+pub const ValueType = enum(u8) {
+    bool,
+    nil,
+    number,
+};
+
+// pub const Value = f64;
+pub const Value = struct {
+    valueType: ValueType,
+    as: union {
+        boolean: bool,
+        number: f64,
+    },
+};
+
+pub inline fn numberVal(value: f64) Value {
+    return .{ .as = .{ .number = value }, .valueType = .number };
+}
+
+pub inline fn booleanVal(value: bool) Value {
+    return .{ .as = .{ .boolean = value }, .valueType = .bool };
+}
+
+pub inline fn nilVal() Value {
+    return .{ .as = .{ .boolean = false }, .valueType = .nil };
+}
+
+pub inline fn asNumber(value: Value) f64 {
+    return value.as.number;
+}
+
+pub inline fn asBoolean(value: Value) bool {
+    return value.as.boolean;
+}
+
+pub inline fn isNumber(value: Value) bool {
+    return value.valueType == .number;
+}
+
+pub inline fn isBoolean(value: Value) bool {
+    return value.valueType == .bool;
+}
+
+pub inline fn isNil(value: Value) bool {
+    return value.valueType == .nil;
+}
 
 pub const ValueArray = struct {
     capacity: usize,
@@ -35,5 +80,18 @@ pub const ValueArray = struct {
 };
 
 pub fn printValue(value: Value) void {
-    std.debug.print("{d}", .{value});
+    switch (value.valueType) {
+        .bool => std.debug.print("{s}", .{if (asBoolean(value)) "true" else "false"}),
+        .nil => std.debug.print("nil", .{}),
+        .number => std.debug.print("{d}", .{asNumber(value)}),
+    }
+}
+
+pub fn valuesEqual(a: Value, b: Value) bool {
+    if (a.valueType != b.valueType) return false;
+    switch (a.valueType) {
+        .bool => return asBoolean(a) == asBoolean(b),
+        .nil => return true,
+        .number => return asNumber(a) == asNumber(b),
+    }
 }

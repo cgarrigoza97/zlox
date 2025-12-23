@@ -117,10 +117,25 @@ fn binary() void {
     parsePrecedence(@enumFromInt(nextPrecedence));
 
     switch (operatorType) {
+        .bang_equal => emitBytes(@intFromEnum(Common.OpCode.op_equal), @intFromEnum(Common.OpCode.op_not)),
+        .equal_equal => emitByte(@intFromEnum(Common.OpCode.op_equal)),
+        .greater => emitByte(@intFromEnum(Common.OpCode.op_greater)),
+        .greater_equal => emitBytes(@intFromEnum(Common.OpCode.op_less), @intFromEnum(Common.OpCode.op_not)),
+        .less => emitByte(@intFromEnum(Common.OpCode.op_less)),
+        .less_equal => emitBytes(@intFromEnum(Common.OpCode.op_greater), @intFromEnum(Common.OpCode.op_not)),
         .plus => emitByte(@intFromEnum(Common.OpCode.op_add)),
         .minus => emitByte(@intFromEnum(Common.OpCode.op_subtract)),
         .star => emitByte(@intFromEnum(Common.OpCode.op_multiply)),
         .slash => emitByte(@intFromEnum(Common.OpCode.op_divide)),
+        else => return,
+    }
+}
+
+fn literal() void {
+    switch (parser.previous.tokenType) {
+        .false => emitByte(@intFromEnum(Common.OpCode.op_false)),
+        .nil => emitByte(@intFromEnum(Common.OpCode.op_nil)),
+        .true_kw => emitByte(@intFromEnum(Common.OpCode.op_true)),
         else => return,
     }
 }
@@ -136,7 +151,7 @@ fn number() void {
         std.debug.print("Could not parse", .{});
         std.process.exit(74);
     };
-    emitConstant(value);
+    emitConstant(Value.numberVal(value));
 }
 
 fn unary() void {
@@ -145,6 +160,7 @@ fn unary() void {
     parsePrecedence(.unary);
 
     switch (operatorType) {
+        .bang => emitByte(@intFromEnum(Common.OpCode.op_not)),
         .minus => emitByte(@intFromEnum(Common.OpCode.op_negate)),
         else => return,
     }
@@ -163,29 +179,29 @@ fn getRule(token: Scanner.TokenType) ParseRule {
         .semicolon => .{ .prefix = null, .infix = null, .precedence = .none },
         .slash => .{ .prefix = null, .infix = binary, .precedence = .factor },
         .star => .{ .prefix = null, .infix = binary, .precedence = .factor },
-        .bang => .{ .prefix = null, .infix = null, .precedence = .none },
-        .bang_equal => .{ .prefix = null, .infix = null, .precedence = .none },
+        .bang => .{ .prefix = unary, .infix = null, .precedence = .none },
+        .bang_equal => .{ .prefix = null, .infix = binary, .precedence = .none },
         .equal => .{ .prefix = null, .infix = null, .precedence = .none },
-        .equal_equal => .{ .prefix = null, .infix = null, .precedence = .equality },
-        .greater => .{ .prefix = null, .infix = null, .precedence = .none },
-        .greater_equal => .{ .prefix = null, .infix = null, .precedence = .none },
-        .less => .{ .prefix = null, .infix = null, .precedence = .none },
-        .less_equal => .{ .prefix = null, .infix = null, .precedence = .none },
+        .equal_equal => .{ .prefix = null, .infix = binary, .precedence = .equality },
+        .greater => .{ .prefix = null, .infix = binary, .precedence = .none },
+        .greater_equal => .{ .prefix = null, .infix = binary, .precedence = .none },
+        .less => .{ .prefix = null, .infix = binary, .precedence = .none },
+        .less_equal => .{ .prefix = null, .infix = binary, .precedence = .none },
         .identifier => .{ .prefix = null, .infix = null, .precedence = .none },
         .string => .{ .prefix = null, .infix = null, .precedence = .none },
         .number => .{ .prefix = number, .infix = null, .precedence = .none },
         .class => .{ .prefix = null, .infix = null, .precedence = .none },
         .else_kw => .{ .prefix = null, .infix = null, .precedence = .none },
-        .false => .{ .prefix = null, .infix = null, .precedence = .none },
+        .false => .{ .prefix = literal, .infix = null, .precedence = .none },
         .for_kw => .{ .prefix = null, .infix = null, .precedence = .none },
         .fun => .{ .prefix = null, .infix = null, .precedence = .none },
         .if_kw => .{ .prefix = null, .infix = null, .precedence = .none },
-        .nil => .{ .prefix = null, .infix = null, .precedence = .none },
+        .nil => .{ .prefix = literal, .infix = null, .precedence = .none },
         .print => .{ .prefix = null, .infix = null, .precedence = .none },
         .return_kw => .{ .prefix = null, .infix = null, .precedence = .none },
         .super_kw => .{ .prefix = null, .infix = null, .precedence = .none },
         .this_kw => .{ .prefix = null, .infix = null, .precedence = .none },
-        .true_kw => .{ .prefix = null, .infix = null, .precedence = .none },
+        .true_kw => .{ .prefix = literal, .infix = null, .precedence = .none },
         .var_kw => .{ .prefix = null, .infix = null, .precedence = .none },
         .while_kw => .{ .prefix = null, .infix = null, .precedence = .none },
         .error_kw => .{ .prefix = null, .infix = null, .precedence = .none },

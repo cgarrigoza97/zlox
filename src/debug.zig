@@ -25,6 +25,24 @@ pub fn disassembleInstruction(chunk: *Common.Chunk, offset: usize) usize {
         @intFromEnum(Common.OpCode.op_constant) => {
             return constantInstruction("OP_CONSTANT", chunk, offset);
         },
+        @intFromEnum(Common.OpCode.op_nil) => {
+            return simpleInstruction("OP_NIL", offset);
+        },
+        @intFromEnum(Common.OpCode.op_true) => {
+            return simpleInstruction("OP_TRUE", offset);
+        },
+        @intFromEnum(Common.OpCode.op_false) => {
+            return simpleInstruction("OP_FALSE", offset);
+        },
+        @intFromEnum(Common.OpCode.op_equal) => {
+            return simpleInstruction("OP_EQUAL", offset);
+        },
+        @intFromEnum(Common.OpCode.op_greater) => {
+            return simpleInstruction("OP_GREATER", offset);
+        },
+        @intFromEnum(Common.OpCode.op_less) => {
+            return simpleInstruction("OP_LESS", offset);
+        },
         @intFromEnum(Common.OpCode.op_add) => {
             return simpleInstruction("OP_ADD", offset);
         },
@@ -36,6 +54,9 @@ pub fn disassembleInstruction(chunk: *Common.Chunk, offset: usize) usize {
         },
         @intFromEnum(Common.OpCode.op_divide) => {
             return simpleInstruction("OP_DIVIDE", offset);
+        },
+        @intFromEnum(Common.OpCode.op_not) => {
+            return simpleInstruction("OP_NOT", offset);
         },
         @intFromEnum(Common.OpCode.op_negate) => {
             return simpleInstruction("OP_NEGATE", offset);

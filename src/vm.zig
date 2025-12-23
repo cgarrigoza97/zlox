@@ -10,12 +10,27 @@ const stack_max = 256;
 
 pub const InterpretResult = enum(u8) { interpret_ok, interpret_compile_error, interpret_runtime_error };
 
-pub const VM = struct { chunk: *Common.Chunk, ip: ?[*]u8, stack: [stack_max]Value.Value, stackTop: [*]Value.Value };
+pub const VM = struct { chunk: *Common.Chunk, ip: ?[*]u8, stack: [stack_max]Value.Value, stackTop: usize };
 
 var vm: VM = undefined;
 
 fn resetStack() void {
-    vm.stackTop = &vm.stack;
+    vm.stackTop = 0;
+}
+
+fn runtimeError(comptime format: []const u8, args: anytype) void {
+    std.debug.print(format, args);
+    std.debug.print("\n", .{});
+
+    const ip = vm.ip orelse unreachable;
+    const code = vm.chunk.code orelse unreachable;
+    const instruction: usize = @intCast(ip - code - 1);
+    const lines = vm.chunk.lines orelse unreachable;
+    const line = lines[instruction];
+
+    std.debug.print("[line {}] in script\n", .{line});
+
+    resetStack();
 }
 
 pub fn init() void {
@@ -25,13 +40,21 @@ pub fn init() void {
 pub fn free() void {}
 
 pub fn push(value: Value.Value) void {
-    vm.stackTop[0] = value;
+    vm.stack[vm.stackTop] = value;
     vm.stackTop += 1;
 }
 
 pub fn pop() Value.Value {
     vm.stackTop -= 1;
-    return vm.stackTop[0];
+    return vm.stack[vm.stackTop];
+}
+
+fn peek(distance: usize) Value.Value {
+    return vm.stack[vm.stackTop - 1 - distance];
+}
+
+fn isFalsey(value: Value.Value) bool {
+    return Value.isNil(value) or (Value.isBoolean(value) and !Value.asBoolean(value));
 }
 
 inline fn readByte() u8 {
@@ -47,26 +70,40 @@ inline fn readConstant() Value.Value {
     return vm.chunk.constants.values.?[readByte()];
 }
 
-inline fn binaryOp(comptime op: anytype) void {
-    const b = pop();
-    const a = pop();
-    push(op(a, b));
+inline fn binaryOp(comptime valueType: anytype, comptime op: anytype) ?InterpretResult {
+    if (!Value.isNumber(peek(0)) or !Value.isNumber(peek(1))) {
+        runtimeError("Operands must be numbers", .{});
+        return .interpret_runtime_error;
+    }
+    const b = Value.asNumber(pop());
+    const a = Value.asNumber(pop());
+    push(valueType(op(a, b)));
+
+    return null;
 }
 
-inline fn add(a: Value.Value, b: Value.Value) Value.Value {
+inline fn add(a: f64, b: f64) f64 {
     return a + b;
 }
 
-inline fn sub(a: Value.Value, b: Value.Value) Value.Value {
+inline fn sub(a: f64, b: f64) f64 {
     return a - b;
 }
 
-inline fn mult(a: Value.Value, b: Value.Value) Value.Value {
+inline fn mult(a: f64, b: f64) f64 {
     return a * b;
 }
 
-inline fn div(a: Value.Value, b: Value.Value) Value.Value {
+inline fn div(a: f64, b: f64) f64 {
     return a / b;
+}
+
+inline fn greater(a: f64, b: f64) bool {
+    return a > b;
+}
+
+inline fn less(a: f64, b: f64) bool {
+    return a < b;
 }
 
 fn run() InterpretResult {
@@ -92,24 +129,57 @@ fn run() InterpretResult {
                 push(constant);
                 break;
             },
+            @intFromEnum(Common.OpCode.op_nil) => {
+                push(Value.nilVal());
+                break;
+            },
+            @intFromEnum(Common.OpCode.op_true) => {
+                push(Value.booleanVal(true));
+                break;
+            },
+            @intFromEnum(Common.OpCode.op_false) => {
+                push(Value.booleanVal(false));
+                break;
+            },
+            @intFromEnum(Common.OpCode.op_equal) => {
+                const b = pop();
+                const a = pop();
+                push(Value.booleanVal(Value.valuesEqual(a, b)));
+                break;
+            },
+            @intFromEnum(Common.OpCode.op_greater) => {
+                _ = binaryOp(Value.booleanVal, greater);
+            },
+            @intFromEnum(Common.OpCode.op_less) => {
+                _ = binaryOp(Value.booleanVal, less);
+            },
             @intFromEnum(Common.OpCode.op_add) => {
-                binaryOp(add);
+                _ = binaryOp(Value.numberVal, add);
                 break;
             },
             @intFromEnum(Common.OpCode.op_subtract) => {
-                binaryOp(sub);
+                _ = binaryOp(Value.numberVal, sub);
                 break;
             },
             @intFromEnum(Common.OpCode.op_multiply) => {
-                binaryOp(mult);
+                _ = binaryOp(Value.numberVal, mult);
                 break;
             },
             @intFromEnum(Common.OpCode.op_divide) => {
-                binaryOp(div);
+                _ = binaryOp(Value.numberVal, div);
+                break;
+            },
+            @intFromEnum(Common.OpCode.op_not) => {
+                push(Value.booleanVal(isFalsey(pop())));
                 break;
             },
             @intFromEnum(Common.OpCode.op_negate) => {
-                push(-pop());
+                if (Value.isNumber(peek(0))) {
+                    runtimeError("Operand must be a number.", .{});
+                    return .interpret_runtime_error;
+                }
+
+                push(Value.numberVal(-Value.asNumber(pop())));
                 break;
             },
             @intFromEnum(Common.OpCode.op_return) => {

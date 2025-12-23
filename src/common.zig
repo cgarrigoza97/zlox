@@ -2,7 +2,7 @@ const std = @import("std");
 const Memory = @import("memory.zig");
 const Value = @import("value.zig");
 
-pub const OpCode = enum(u8) { op_constant, op_add, op_subtract, op_multiply, op_divide, op_negate, op_return };
+pub const OpCode = enum(u8) { op_constant, op_nil, op_true, op_false, op_equal, op_greater, op_less, op_add, op_subtract, op_multiply, op_divide, op_not, op_negate, op_return };
 
 pub const Chunk = struct {
     count: usize,
