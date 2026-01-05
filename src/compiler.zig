@@ -3,6 +3,7 @@ const config = @import("config");
 const Scanner = @import("scanner.zig");
 const Common = @import("common.zig");
 const Value = @import("value.zig");
+const Object = @import("object.zig");
 const debug = @import("debug.zig");
 
 const Parser = struct { current: Scanner.Token, previous: Scanner.Token, hadError: bool, panicMode: bool };
@@ -154,6 +155,13 @@ fn number() void {
     emitConstant(Value.numberVal(value));
 }
 
+fn string() void {
+    const slice: []u8 = @ptrCast(parser.previous.start);
+    const objString = Object.copyString(slice[1 .. parser.previous.length - 1]);
+    const obj = &objString.obj;
+    emitConstant(Value.objVal(obj));
+}
+
 fn unary() void {
     const operatorType = parser.previous.tokenType;
 
@@ -188,7 +196,7 @@ fn getRule(token: Scanner.TokenType) ParseRule {
         .less => .{ .prefix = null, .infix = binary, .precedence = .none },
         .less_equal => .{ .prefix = null, .infix = binary, .precedence = .none },
         .identifier => .{ .prefix = null, .infix = null, .precedence = .none },
-        .string => .{ .prefix = null, .infix = null, .precedence = .none },
+        .string => .{ .prefix = string, .infix = null, .precedence = .none },
         .number => .{ .prefix = number, .infix = null, .precedence = .none },
         .class => .{ .prefix = null, .infix = null, .precedence = .none },
         .else_kw => .{ .prefix = null, .infix = null, .precedence = .none },

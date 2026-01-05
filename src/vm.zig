@@ -2,17 +2,19 @@ const std = @import("std");
 const config = @import("config");
 
 const Common = @import("common.zig");
+const Memory = @import("memory.zig");
 const Value = @import("value.zig");
 const Compiler = @import("compiler.zig");
+const Object = @import("object.zig");
 const Debug = @import("debug.zig");
 
 const stack_max = 256;
 
 pub const InterpretResult = enum(u8) { interpret_ok, interpret_compile_error, interpret_runtime_error };
 
-pub const VM = struct { chunk: *Common.Chunk, ip: ?[*]u8, stack: [stack_max]Value.Value, stackTop: usize };
+pub const VM = struct { chunk: *Common.Chunk, ip: ?[*]u8, stack: [stack_max]Value.Value, stackTop: usize, objects: ?*Object.Obj };
 
-var vm: VM = undefined;
+pub var vm: VM = undefined;
 
 fn resetStack() void {
     vm.stackTop = 0;
@@ -35,9 +37,12 @@ fn runtimeError(comptime format: []const u8, args: anytype) void {
 
 pub fn init() void {
     resetStack();
+    vm.objects = null;
 }
 
-pub fn free() void {}
+pub fn free() void {
+    Memory.freeObjects();
+}
 
 pub fn push(value: Value.Value) void {
     vm.stack[vm.stackTop] = value;
@@ -55,6 +60,24 @@ fn peek(distance: usize) Value.Value {
 
 fn isFalsey(value: Value.Value) bool {
     return Value.isNil(value) or (Value.isBoolean(value) and !Value.asBoolean(value));
+}
+
+fn concatenate() void {
+    const b = Object.asString(Value.asObj(pop()));
+    const a = Object.asString(Value.asObj(pop()));
+
+    const length = a.length + b.length;
+
+    const chars: []u8 = @ptrCast(Memory.allocate(u8, length + 1));
+    const aSlice: []u8 = @ptrCast(a.chars);
+    const bSlice: []u8 = @ptrCast(b.chars);
+    @memcpy(chars[0..a.length], aSlice);
+    @memcpy(chars[a.length..], bSlice);
+
+    chars[length] = 0;
+
+    const result = Object.takeString(chars);
+    push(Value.objVal(&result.obj));
 }
 
 inline fn readByte() u8 {
@@ -154,7 +177,15 @@ fn run() InterpretResult {
                 _ = binaryOp(Value.booleanVal, less);
             },
             @intFromEnum(Common.OpCode.op_add) => {
-                _ = binaryOp(Value.numberVal, add);
+                if (Object.isString(peek(0)) and Object.isString(peek(1))) {
+                    concatenate();
+                } else if (Value.isNumber(peek(0)) and Value.isNumber(peek(1))) {
+                    const b = Value.asNumber(pop());
+                    const a = Value.asNumber(pop());
+                    push(Value.numberVal(a + b));
+                } else {
+                    runtimeError("Operands must be two numbers or two strings.", .{});
+                }
                 break;
             },
             @intFromEnum(Common.OpCode.op_subtract) => {
