@@ -54,8 +54,10 @@ pub const ObjString = struct {
 };
 
 pub fn copyString(chars: []u8) *ObjString {
-    var heapChars: []u8 = @ptrCast(Memory.allocate(u8, chars.len + 1));
-    @memcpy(heapChars, chars);
+    const opaque_ptr = Memory.allocate(u8, chars.len + 1) orelse @panic("Out of memory");
+    const ptr: [*]u8 = @ptrCast(opaque_ptr);
+    const heapChars = ptr[0 .. chars.len + 1];
+    @memcpy(heapChars[0..chars.len], chars);
     heapChars[chars.len] = 0;
     return allocateString(heapChars);
 }

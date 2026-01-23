@@ -156,7 +156,7 @@ fn number() void {
 }
 
 fn string() void {
-    const slice: []u8 = @ptrCast(parser.previous.start);
+    const slice: [*]u8 = @ptrCast(parser.previous.start);
     const objString = Object.copyString(slice[1 .. parser.previous.length - 1]);
     const obj = &objString.obj;
     emitConstant(Value.objVal(obj));
